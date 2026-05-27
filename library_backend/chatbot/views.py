@@ -3,12 +3,18 @@ from django.views.decorators.csrf import csrf_exempt
 from groq import Groq
 import json
 import os
-from dotenv import load_dotenv
 
-# Initialize Groq client
-load_dotenv()
+# Lazy initialization - don't create client at module load
+_groq_client = None
 
-client = Groq(api_key=os.getenv('GROQ_API_KEY'))
+def get_groq_client():
+    global _groq_client
+    if _groq_client is None:
+        api_key = os.getenv('GROQ_API_KEY')
+        if not api_key:
+            raise Exception("GROQ_API_KEY environment variable is not set")
+        _groq_client = Groq(api_key=api_key)
+    return _groq_client
 
 @csrf_exempt
 def chatbot_response(request):
@@ -20,12 +26,29 @@ def chatbot_response(request):
             if not user_message:
                 return JsonResponse({'error': 'No message provided'}, status=400)
 
-            # Library Assistant Prompt
-            system_prompt = """You are a friendly and helpful librarian assistant for an online library system. 
-            Help users with book recommendations, searching books, borrowing rules, due dates, and general library information."""
+             system_prompt = """You are a friendly, helpful, and knowledgeable librarian assistant for the IPT Library System.
+
+Your role is to help users with:
+- Book recommendations based on genre, author, or topic
+- Searching for books (title, author, ISBN)
+- Borrowing and returning books procedures
+- Due dates and overdue information
+- Library rules and policies
+- Account-related questions
+- Finding similar books or popular titles
+
+Tone: Friendly, patient, professional but approachable. Use simple language.
+
+You can answer general questions about the library. If the user asks something you don't have information about, politely say you can help with library-related topics.
+
+Current date is May 2026.
+
+Be helpful and encourage users to explore the library system."""
+
+            client = get_groq_client()
 
             response = client.chat.completions.create(
-                model="llama-3.3-70b-versatile",   # Good balance of speed and quality
+                model="llama-3.3-70b-versatile",
                 messages=[
                     {"role": "system", "content": system_prompt},
                     {"role": "user", "content": user_message}
