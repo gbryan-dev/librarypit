@@ -2,9 +2,13 @@ from django.http import JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from groq import Groq
 import json
+import os
+from dotenv import load_dotenv
 
 # Initialize Groq client
-client = Groq(api_key="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")   
+load_dotenv()
+
+client = Groq(api_key=os.getenv('GROQ_API_KEY'))
 
 @csrf_exempt
 def chatbot_response(request):
